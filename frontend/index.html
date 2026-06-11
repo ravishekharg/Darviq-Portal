@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>K8s Platform Portal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #f5f5f5; color: #333; }
+    header { background: #1a3a5c; color: white; padding: 16px 32px; }
+    header h1 { font-size: 20px; font-weight: 500; }
+    .container { max-width: 960px; margin: 32px auto; padding: 0 24px; }
+    .card { background: white; border-radius: 8px; padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+    .card h2 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: #1a3a5c; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px 10px; border: 1px solid #ddd;
+                    border-radius: 4px; font-size: 14px; }
+    button { background: #1a3a5c; color: white; border: none; padding: 10px 20px;
+             border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 12px; }
+    button:hover { background: #255080; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px; background: #f8f8f8; border-bottom: 1px solid #eee; }
+    td { padding: 8px; border-bottom: 1px solid #eee; }
+    .badge { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+    .badge-active { background: #e6f4ea; color: #2e7d32; }
+    #msg { padding: 10px; border-radius: 4px; margin-top: 12px; display: none; }
+    .success { background: #e6f4ea; color: #2e7d32; }
+    .error { background: #fce8e6; color: #c62828; }
+  </style>
+</head>
+<body>
+  <header><h1>☸ Kubernetes Platform Self-Service Portal</h1></header>
+  <div class="container">
+
+    <div class="card">
+      <h2>Request New Namespace</h2>
+      <div class="form-grid">
+        <div>
+          <label>Team Name</label>
+          <input id="teamName" placeholder="e.g. payments">
+        </div>
+        <div>
+          <label>Environment</label>
+          <select id="environment">
+            <option>dev</option>
+            <option>staging</option>
+            <option>prod</option>
+          </select>
+        </div>
+        <div>
+          <label>CPU Limit</label>
+          <input id="cpuLimit" value="4" placeholder="e.g. 4">
+        </div>
+        <div>
+          <label>Memory Limit</label>
+          <input id="memoryLimit" value="8Gi" placeholder="e.g. 8Gi">
+        </div>
+        <div>
+          <label>Owner Email</label>
+          <input id="ownerEmail" placeholder="team-lead@company.com">
+        </div>
+        <div>
+          <label>Requested By</label>
+          <input id="requestedBy" placeholder="your name">
+        </div>
+      </div>
+      <button onclick="createNamespace()">Provision Namespace</button>
+      <div id="msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Active Namespaces</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Namespace</th><th>Status</th><th>CPU</th>
+            <th>Memory</th><th>Owner</th><th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="nsTable"><tr><td colspan="6">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const API = 'http://localhost:8080';
+
+    async function createNamespace() {
+      const msg = document.getElementById('msg');
+      const body = {
+        team_name:    document.getElementById('teamName').value,
+        environment:  document.getElementById('environment').value,
+        cpu_limit:    document.getElementById('cpuLimit').value,
+        memory_limit: document.getElementById('memoryLimit').value,
+        owner_email:  document.getElementById('ownerEmail').value,
+        requested_by: document.getElementById('requestedBy').value,
+      };
+      try {
+        const r = await fetch(`${API}/api/namespaces`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await r.json();
+        if (r.ok) {
+          msg.className = 'success'; msg.style.display = 'block';
+          msg.textContent = `✅ Namespace "${data.namespace}" provisioned successfully`;
+          loadNamespaces();
+        } else {
+          throw new Error(data.detail || 'Unknown error');
+        }
+      } catch(e) {
+        msg.className = 'error'; msg.style.display = 'block';
+        msg.textContent = `❌ Error: ${e.message}`;
+      }
+    }
+
+    async function loadNamespaces() {
+      const tbody = document.getElementById('nsTable');
+      try {
+        const r = await fetch(`${API}/api/namespaces`);
+        const data = await r.json();
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="6">No namespaces yet</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(ns => `
+          <tr>
+            <td><code>${ns.name}</code></td>
+            <td><span class="badge badge-active">${ns.status}</span></td>
+            <td>${ns.cpu_limit}</td>
+            <td>${ns.memory_limit}</td>
+            <td>${ns.owner}</td>
+            <td>${ns.created_at ? ns.created_at.split('T')[0] : '-'}</td>
+          </tr>`).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6">Could not load namespaces</td></tr>';
+      }
+    }
+
+    loadNamespaces();
+    setInterval(loadNamespaces, 30000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-operator
+  namespace: platform-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: platform-operator
+  template:
+    metadata:
+      labels:
+        app: platform-operator
+    spec:
+      serviceAccountName: platform-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: operator
+          image: ghcr.io/ravishekharg/k8s-platform-portal/operator:latest
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
