@@ -30,4 +30,9 @@ jobs:
         with:
           context: ${{ matrix.component }}/
           push: true
-          tags: ghcr.io/${{ github.repository }}/${{ matrix.component }}:${{ github.sha }}
+          # ghcr.io requires lowercase image paths; github.repository preserves
+          # the repo's actual casing (K8s-Platform-Portal), so it is hardcoded
+          # here in lowercase rather than interpolated.
+          tags: |
+            ghcr.io/ravishekharg/k8s-platform-portal/${{ matrix.component }}:${{ github.sha }}
+            ghcr.io/ravishekharg/k8s-platform-portal/${{ matrix.component }}:latest
