@@ -1,6 +1,8 @@
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 import logging
 from k8s_client import create_namespace, list_namespaces, delete_namespace
 from models import NamespaceRequest
@@ -14,11 +16,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Origins allowed to call this API. Defaults to "*" for local/dev use, but
+# should be set to the portal's actual origin(s) in any real deployment via
+# the ALLOWED_ORIGINS env var (comma-separated list).
+_allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+allow_origins = ["*"] if _allowed_origins == "*" else [
+    origin.strip() for origin in _allowed_origins.split(",") if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allow_origins,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -40,7 +50,7 @@ def health():
 def provision_namespace(body: NamespaceRequestBody):
     if body.environment not in ["dev", "staging", "prod"]:
         raise HTTPException(status_code=400, detail="environment must be dev, staging, or prod")
-    req = NamespaceRequest(**body.dict())
+    req = NamespaceRequest(**body.model_dump())
     try:
         result = create_namespace(req)
         return result
@@ -59,7 +69,11 @@ def get_namespaces():
 
 @app.delete("/api/namespaces/{name}")
 def remove_namespace(name: str):
-    result = delete_namespace(name)
+    try:
+        result = delete_namespace(name)
+    except Exception as e:
+        logger.error(f"Failed to delete namespace {name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     if result["status"] == "not_found":
         raise HTTPException(status_code=404, detail="Namespace not found")
     return result

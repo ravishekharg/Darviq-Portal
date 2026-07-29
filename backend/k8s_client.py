@@ -39,7 +39,7 @@ def create_namespace(req: NamespaceRequest) -> dict:
             annotations={
                 "owner":        req.owner_email,
                 "requested-by": req.requested_by,
-                "created-at":   datetime.datetime.utcnow().isoformat(),
+                "created-at":   datetime.datetime.now(datetime.timezone.utc).isoformat(),
             }
         )
     )
