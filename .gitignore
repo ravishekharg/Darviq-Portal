@@ -1,0 +1,43 @@
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*kubeconfig*
+*.crt
+*.p12
+*.pfx
+secrets.yaml
+secrets.yml
+
+# Terraform state (if introduced later)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend tooling
+node_modules/
+dist/
+build/
+
+# Go (if introduced later)
+vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
